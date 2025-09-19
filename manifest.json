@@ -1,0 +1,56 @@
+{
+    "manifest_version": 3,
+    "name": "XHR/Fetch Interceptor",
+    "version": "1.0",
+    "description": "Intercept XHR/fetch responses on specified sites",
+    "permissions": [
+        "scripting",
+        "tabs",
+        "storage",
+        "declarativeNetRequest",
+        "declarativeNetRequestWithHostAccess"
+    ],
+    "declarative_net_request": {
+        "rule_resources": [
+            {
+                "id": "ruleset_1",
+                "enabled": true,
+                "path": "rules.json"
+            }
+        ]
+    },
+    "host_permissions": [
+        "https://www.kaoshibao.com/*"
+    ],
+    "content_scripts": [
+        {
+            "matches": [
+                "https://www.kaoshibao.com/*"
+            ],
+            "js": [
+                "context.js"
+            ],
+            "run_at": "document_start"
+        },
+        {
+            "matches": [
+                "https://www.kaoshibao.com/*"
+            ],
+            "js": [
+                "end.js"
+            ],
+            "run_at": "document_end"
+        }
+    ],
+    "web_accessible_resources": [
+        {
+            "resources": [
+                "interceptor.js",
+                "question.js"
+            ],
+            "matches": [
+                "https://www.kaoshibao.com/*"
+            ]
+        }
+    ]
+}

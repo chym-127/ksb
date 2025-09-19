@@ -1,0 +1,18 @@
+[
+    {
+        "id": 1,
+        "priority": 1,
+        "action": {
+            "type": "redirect",
+            "redirect": {
+                "extensionPath": "/question.js"
+            }
+        },
+        "condition": {
+            "urlFilter": "https://www.kaoshibao.com/_nuxt/8dc60d33d0e5d790312f.js",
+            "resourceTypes": [
+                "script"
+            ]
+        }
+    }
+]
