@@ -4,8 +4,9 @@ import requests
 import numpy as np
 
 # 绘制文字
-page_size = 15
+page_size = 50
 y_offset = 40
+w_offset = 10
 font_size = 36
 simhei = "C:\\Windows\\Fonts\\simhei.ttf"
 d_font = ImageFont.truetype(simhei, font_size)
@@ -33,17 +34,18 @@ def get_first_char(items):
     return items
 
 
-def get_max_text_width(items, primary_font_path):
+def get_max_text_width(items):
     image = Image.new("RGB", (1500, 1500), (255, 255, 255))
     draw = ImageDraw.Draw(image)
-    t_font = ImageFont.truetype(primary_font_path, font_size)
     max_w = 0
     y = 0
     for i in items:
+        primary_font_path = f"C:\\Users\\chym\\Downloads\\{i['special_font']}.ttf"
+        t_font = ImageFont.truetype(primary_font_path, font_size)
         x = 0
         if i['first_char'] == "":
             y += font_size+y_offset
-            break
+            continue
         for char in i['question']:
             font = t_font
             try:
@@ -56,14 +58,17 @@ def get_max_text_width(items, primary_font_path):
                 font = d_font
                 char = i['first_char'] or "题"
                 pass
-            w = draw.textlength(char, font=font, font_size=font_size)
+            w = draw.textlength(
+                char, font=font, font_size=font_size) + w_offset
             x += w
         max_w = max(max_w, x)
         y += font_size+y_offset
     return [int(max_w)+1, y]
 
 
-def draw_text(position, draw, item, t_font):
+def draw_text(position, draw, item):
+    primary_font_path = f"C:\\Users\\chym\\Downloads\\{item['special_font']}.ttf"
+    t_font = ImageFont.truetype(primary_font_path, font_size)
     x, y = position
     text = item['question']
     # 题干是对的
@@ -86,15 +91,14 @@ def draw_text(position, draw, item, t_font):
         # 绘制字符
         draw.text((x, y), char, font=font, fill=(0, 0, 0))
         # 移动 x 位置到下一个字符
-        w = draw.textlength(char, font=font, font_size=font_size)
+        w = draw.textlength(char, font=font, font_size=font_size) + w_offset
         x += w
 
 
-def draw_texts(draw, items, primary_font_path):
-    primary_font = ImageFont.truetype(primary_font_path, font_size)
+def draw_texts(draw, items):
     x, y = (0, 0)
     for i in items:
-        draw_text((0, y), draw, i, primary_font)
+        draw_text((0, y), draw, i)
         y += font_size+y_offset
 
 
@@ -112,11 +116,10 @@ def http_list_ques(page_num):
 
 
 def draw(items):
-    primary_font_path = f"C:\\Users\\chym\\Downloads\\{items[0]['special_font']}.ttf"
-    rect = get_max_text_width(items, primary_font_path)
+    rect = get_max_text_width(items)
     image = Image.new("RGB", rect, (255, 255, 255))
     draw = ImageDraw.Draw(image)
-    draw_texts(draw, items, primary_font_path)
+    draw_texts(draw, items)
     image = ImageOps.invert(image)  # 反色（如果背景白色）
     image.save("output.png")
 
@@ -190,16 +193,18 @@ if __name__ == "__main__":
     count = 1
     while True:
         print(f"第{count}次")
-        print(f"请求中")
-
         resp = http_list_ques(1)
         items = resp['data']["items"]
         if (len(items) <= 0):
             sys.exit(0)
-        print(f"请求结束，共{len(items)}个数据")
+        print(f"共请求到{len(items)}个数据,开始解密")
         items = get_first_char(items)
+        print(f"正在绘制图片")
         draw(items)
+        print(f"OCR识别中")
         txts = easyocr_group_by_line("output.png")
+        print(f"解密文字中")
         results = gen_real_name(items, txts)
+        print(f"解密成功")
         update_ques_name(results)
-        sys.exit(0)
+        count += 1

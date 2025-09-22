@@ -6,7 +6,11 @@ let is_start = false
 let list = []
 let listMapper = {}
 let fonts = {}
-
+function htmlToText(htmlStr) {
+    const tmp = document.createElement('div');
+    tmp.innerHTML = htmlStr;      // 解析标签和实体
+    return tmp.textContent || tmp.innerText || '';
+}
 window._InterceptQues = (data) => {
     let items = JSON.parse(JSON.stringify(data))
     for (let index = 0; index < items.length; index++) {
@@ -30,10 +34,25 @@ window._InterceptQues = (data) => {
         item.all_accuracy = +item.all_accuracy
         item.created_at = Date.parse(item.created_at.replace(" ", "T"));
         item.updated_at = Date.parse(item.updated_at.replace(" ", "T"));
+        item.question = htmlToText(item.question)
+        let options = item.options
+        if (options) {
+            options = JSON.parse(options)
+            for (let i = 0; i < options.length; i++) {
+                const option = options[i];
+                option.Value = htmlToText(option.Value)
+            }
+        }
+        item.options = JSON.stringify(options)
+
+
         fonts[item.special_font] = 1
         list.push(item)
     }
-    showQuestionCount();
+
+    if (max) {
+        setProgress(+(list.length / max * 100).toFixed(2))
+    }
 
     // if (!is_start || is_end) {
     //     return
@@ -74,13 +93,20 @@ function randomInt(min, max) {
 }
 
 
+function getQuestionNum() {
+    els = document.querySelectorAll("#body > div.middle-container.bj-eee > div.layout-container.prative-page > div.clearfix > div.layout-right.pull-right.lianxi-right > div:nth-child(1) > div.problem-list.clearfix > span")
+    max = els.length || 0
+    if (max) {
+        setQuestionCount(max)
+        row.style.visibility = 'visible'
+        setProgress(+(list.length / max * 100).toFixed(2))
+    }
+}
+
 
 function start() {
     is_start = true
-    els = document.querySelectorAll("#body > div.middle-container.bj-eee > div.layout-container.prative-page > div.clearfix > div.layout-right.pull-right.lianxi-right > div:nth-child(1) > div.problem-list.clearfix > span")
-    max = els.length
-
-    console.log(els, max);
+    getQuestionNum()
     loop()
 }
 
@@ -93,62 +119,19 @@ function loop() {
     }
     if (cur > max) {
         cur = max - 1
+        if (Notification.permission === "granted") {
+            new Notification("任务完成", {
+                body: `共采集到${list.length}条数据`,
+            });
+        }
         is_end = true
     } else {
         cur += 10
     }
     setTimeout(() => {
         loop()
-    }, randomInt(500, 1000));
+    }, randomInt(1000, 1500));
 }
-
-
-
-let paper = {};
-(function () {
-    let el = document.createElement("button")
-    el.innerText = "开始采集"
-    el.style.position = "fixed"
-    el.style.bottom = "20px"
-    el.style.right = "20px"
-    el.style.zIndex = 999999
-    el.addEventListener("click", e => {
-        console.log('开始采集');
-        paper = JSON.parse(localStorage.getItem("paper"))
-        start()
-    })
-    if (document.body) {
-        document.body.appendChild(el)
-    }
-})();
-
-
-(function () {
-    window.episodes = {}
-    let el = document.createElement("button")
-    el.innerText = "发送数据"
-    el.style.position = "fixed"
-    el.style.bottom = "50px"
-    el.style.right = "20px"
-    el.style.zIndex = 999999
-    el.addEventListener("click", e => {
-        let d = localStorage.getItem("FULL_NAME")
-        const value = prompt("请输入题库名称：", d);
-        if (value !== null) {
-            for (const key in fonts) {
-                downloadFile(`https://resource-cdn.kaoshibao.com/fonts/${key}.ttf`, `${key}.ttf`);
-            }
-            sendData({ question_bank: { name: value }, items: list })
-            els[0].click()
-        } else {
-            console.log("用户点击了取消");
-        }
-
-    })
-    if (document.body) {
-        document.body.appendChild(el)
-    }
-})();
 
 
 function downloadFile(url, filename) {
@@ -162,37 +145,134 @@ function downloadFile(url, filename) {
 
 
 
-
-// 创建 UI 更新函数
-function showQuestionCount() {
-    let container = document.getElementById("question-count-box");
-    if (!container) {
-        container = document.createElement("div");
-        container.id = "question-count-box";
-        Object.assign(container.style, {
-            position: "fixed",
-            bottom: "120px",
-            right: "20px",
-            padding: "10px 15px",
-            background: "#2196F3",
-            color: "#fff",
-            fontSize: "16px",
-            borderRadius: "8px",
-            boxShadow: "0 2px 6px rgba(0,0,0,.3)"
-        });
-        document.body.appendChild(container);
-    }
-    container.textContent = `题目数量：${list.length}`;
-}
-
-
 setTimeout(() => {
     let pNameEl = document.getElementsByClassName('p-name')
+    let fullName = ''
     if (pNameEl.length) {
         let kNameEl = document.getElementsByClassName('k-name')
-        localStorage.setItem("FULL_NAME", pNameEl[0].innerText)
+        fullName = pNameEl[0].innerText
         if (kNameEl.length) {
-            localStorage.setItem("FULL_NAME", kNameEl[0].innerText + '_' + pNameEl[0].innerText)
+            fullName = kNameEl[0].innerText + '_' + pNameEl[0].innerText
         }
+        localStorage.setItem("FULL_NAME", fullName)
     }
 }, 1200);
+
+setTimeout(() => {
+    getQuestionNum()
+}, 1500);
+
+
+
+
+const CUI = window.CUI
+
+const { span: paperNameEl, setText: setPaperName } = CUI.createSpan({
+    text: localStorage.getItem("FULL_NAME") || '',
+    className: ['color-#000']
+})
+
+
+const { span: questionCountEl, setText: setQuestionCount } = CUI.createSpan({
+    text: "",
+    className: ['color-#000']
+})
+
+
+const collect = CUI.createButton({
+    text: '采集题目',
+    onClick: () => {
+        if (!list.length) {
+            alert("未劫持到请求数据，请检查是否重写了目标js函数")
+            return
+        }
+        let d = localStorage.getItem("FULL_NAME")
+        setPaperName(d || '-')
+        start()
+    }
+})
+
+
+const send = CUI.createButton({
+    text: '发送数据',
+    onClick: () => {
+        let d = localStorage.getItem("FULL_NAME")
+        const value = prompt("请输入题库名称：", d);
+        if (value !== null) {
+            for (const key in fonts) {
+                downloadFile(`https://resource-cdn.kaoshibao.com/fonts/${key}.ttf`, `${key}.ttf`);
+            }
+            sendData({ question_bank: { name: value }, items: list })
+            els[0].click()
+        } else {
+            console.log("用户点击了取消");
+        }
+    }
+})
+
+const { wrapper, setProgress } = CUI.createProgress({ value: 1 })
+const row = CUI.createDiv({
+    className: 'fixed-top bg-#fff px-32 py-24',
+    child: [
+        CUI.createDiv({
+            className: 'flex-center rounded mb-8', child: [
+                CUI.createDiv({
+                    className: 'w-80 text-left', child: [
+                        CUI.createSpan({
+                            text: "题库名称:",
+                            className: ['color-#000']
+                        }).span
+                    ]
+                }),
+                CUI.createDiv({
+                    className: 'ml-12 rounded flex-1 text-left', child: [
+                        paperNameEl
+                    ]
+                })
+            ]
+        }),
+        CUI.createDiv({
+            className: 'flex-center rounded mb-8', child: [
+                CUI.createDiv({
+                    className: 'w-80 text-left', child: [
+                        CUI.createSpan({
+                            text: "题库数量:",
+                            className: ['color-#000']
+                        }).span
+                    ]
+                }),
+                CUI.createDiv({
+                    className: 'ml-12 rounded flex-1 text-left', child: [
+                        questionCountEl
+                    ]
+                })
+            ]
+        }),
+        CUI.createDiv({
+            className: 'flex-center rounded mb-8', child: [
+                CUI.createDiv({
+                    className: 'w-80 text-left', child: [
+                        CUI.createSpan({
+                            text: "进度:",
+                            className: ['color-#000']
+                        }).span
+                    ]
+                }),
+                CUI.createDiv({ className: 'ml-12 rounded flex-1', child: [wrapper] })
+            ]
+        }),
+        CUI.createDiv({
+            className: 'flex-center-end mt-24', child: [
+                CUI.createDiv({ className: 'mr-24', child: [collect] }),
+                send
+            ]
+        })
+    ]
+});
+row.style.height = '200px';
+row.style.visibility = 'hidden';
+
+
+
+
+
