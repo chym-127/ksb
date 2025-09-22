@@ -5,11 +5,15 @@
     "description": "Intercept XHR/fetch responses on specified sites",
     "permissions": [
         "scripting",
+        "downloads",
         "tabs",
         "storage",
         "declarativeNetRequest",
         "declarativeNetRequestWithHostAccess"
     ],
+    "background": {
+        "service_worker": "background.js"
+    },
     "declarative_net_request": {
         "rule_resources": [
             {

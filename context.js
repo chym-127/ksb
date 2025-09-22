@@ -12,3 +12,7 @@ s.src = chrome.runtime.getURL('interceptor.js');
 
 
 
+window.addEventListener('downloadFilesEvent', e => {
+    const files = e.detail; // a.js 传过来的文件数组
+    chrome.runtime.sendMessage({ action: 'downloadFiles', files });
+});

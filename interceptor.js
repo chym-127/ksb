@@ -6,6 +6,8 @@ let is_start = false
 let list = []
 let listMapper = {}
 let fonts = {}
+let fontList = []
+
 function htmlToText(htmlStr) {
     const tmp = document.createElement('div');
     tmp.innerHTML = htmlStr;      // 解析标签和实体
@@ -118,6 +120,10 @@ function loop() {
         els[cur].click()
     }
     if (cur > max) {
+        fontList = []
+        for (const key in fonts) {
+            fontList.push(key)
+        }
         cur = max - 1
         if (Notification.permission === "granted") {
             new Notification("任务完成", {
@@ -134,15 +140,27 @@ function loop() {
 }
 
 
-function downloadFile(url, filename) {
+function downloadFile(filename, url) {
+    console.log(filename, url);
     const a = document.createElement('a');
     a.href = url;        // 文件地址
-    a.download = filename; // 下载后的文件名
+    a.download = `${filename}.ttf`; // 下载后的文件名
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
 }
 
+
+
+const downloadFonts = (fonts) => {
+    let arr = fonts.map(font => {
+        return `https://resource-cdn.kaoshibao.com/fonts/${font}.ttf`
+    })
+    window.dispatchEvent(new CustomEvent('downloadFilesEvent', { detail: arr }));
+    // arr.forEach(item => {
+    //     downloadFile(item.name, item.url)
+    // });
+}
 
 
 setTimeout(() => {
@@ -199,14 +217,20 @@ const send = CUI.createButton({
         let d = localStorage.getItem("FULL_NAME")
         const value = prompt("请输入题库名称：", d);
         if (value !== null) {
-            for (const key in fonts) {
-                downloadFile(`https://resource-cdn.kaoshibao.com/fonts/${key}.ttf`, `${key}.ttf`);
-            }
+            downloadFonts(fontList)
             sendData({ question_bank: { name: value }, items: list })
             els[0].click()
         } else {
             console.log("用户点击了取消");
         }
+    }
+})
+
+
+const downFonts = CUI.createButton({
+    text: '下载所需字体',
+    onClick: () => {
+        downloadFonts(fontList)
     }
 })
 
@@ -264,7 +288,8 @@ const row = CUI.createDiv({
         CUI.createDiv({
             className: 'flex-center-end mt-24', child: [
                 CUI.createDiv({ className: 'mr-24', child: [collect] }),
-                send
+                CUI.createDiv({ className: 'mr-24', child: [send] }),
+                CUI.createDiv({ className: 'mr-24', child: [downFonts] }),
             ]
         })
     ]
@@ -273,6 +298,17 @@ row.style.height = '200px';
 row.style.visibility = 'hidden';
 
 
-
-
-
+if ("Notification" in window) {
+    // 请求权限
+    Notification.requestPermission().then(permission => {
+        if (permission === "granted") {
+            console.log("用户允许通知权限");
+        } else if (permission === "denied") {
+            console.log("用户拒绝通知权限");
+        } else {
+            console.log("用户未作选择");
+        }
+    });
+} else {
+    console.log("当前浏览器不支持通知 API");
+}

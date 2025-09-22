@@ -208,3 +208,4 @@ if __name__ == "__main__":
         print(f"解密成功")
         update_ques_name(results)
         count += 1
+        sys.exit(0)
